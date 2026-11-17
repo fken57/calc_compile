@@ -8,7 +8,7 @@ TokenArray* lex(Source* source){
     tokens->tokens = malloc(sizeof(Token) * tokens->capacity);
     tokens->count = 0;
 
-    for (int i = 0; i < source->length; i++) {
+    for (size_t i = 0; i < source->length; i++) {
 
         if(source->data[i] == '\0') {
             // EOF
@@ -145,11 +145,11 @@ TokenArray* lex(Source* source){
             tokens->tokens[tokens->count].text = copy_text(number,j);
             tokens->count++;
         }
-        else if(source->data[i] >= 'a' && source->data[i] <= 'z' || source->data[i] == '_' || source->data[i] >= 'A' && source->data[i] <= 'Z') {
+        else if((source->data[i] >= 'a' && source->data[i] <= 'z') || source->data[i] == '_' || (source->data[i] >= 'A' && source->data[i] <= 'Z')) {
             int j = 0;
             char identifier[20];
             //ここで複数文字を連結する
-            while(source->data[i] >= 'a' && source->data[i] <= 'z' || source->data[i] == '_' || source->data[i] >= 'A' && source->data[i] <= 'Z') {
+            while((source->data[i] >= 'a' && source->data[i] <= 'z') || source->data[i] == '_' || (source->data[i] >= 'A' && source->data[i] <= 'Z')) {
                 identifier[j] = source->data[i];
                 i++;
                 j++;
@@ -180,6 +180,11 @@ TokenArray* lex(Source* source){
             else if(strcmp(identifier, "print") == 0){
                 tokens->tokens[tokens->count].type = TK_PRINT;
                 tokens->tokens[tokens->count].text = "print";
+                tokens->count++;
+            }
+            else if(strcmp(identifier, "input") == 0){
+                tokens->tokens[tokens->count].type = TK_INPUT;
+                tokens->tokens[tokens->count].text = "input";
                 tokens->count++;
             }
             else{

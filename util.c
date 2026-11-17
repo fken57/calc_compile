@@ -29,6 +29,9 @@ const char *token_type_name(TokenType type) {
         case TK_SEMICOLON: return "TK_SEMICOLON";
         case TK_COMMA:  return "TK_COMMA";
         case TK_EOF:    return "TK_EOF";
+        case TK_INPUT:  return "TK_INPUT";
+        case TK_LBRACKET: return "TK_LBRACKET";
+        case TK_RBRACKET: return "TK_RBRACKET";
         default:        return "OTHER";
     }
 }

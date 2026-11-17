@@ -53,6 +53,18 @@ Expr* parse_primary(TokenArray* tokens, int begin, int end) {
         }
     }
 
+    if(end == begin + 3){
+        if(tokens->tokens[begin].type == TK_INPUT && 
+           tokens->tokens[begin + 1].type == TK_LPAREN && 
+           tokens->tokens[begin + 2].type == TK_RPAREN){
+            // input() の形式
+            Expr *expr = malloc(sizeof(*expr));
+            expr->type = EXPR_INPUT;
+            expr->data.input.op = TK_INPUT;
+            return expr;
+        }
+    }
+
 
     if (t->type == TK_LPAREN &&
         tokens->tokens[end - 1].type == TK_RPAREN) {
@@ -286,7 +298,7 @@ Statement* parse_assign_statement(TokenArray* tokens, int *pos){
         exit(1);
     }
     int begin = *pos;
-    while( (*pos < tokens->count) && (tokens->tokens[*pos].type != TK_SEMICOLON))
+    while( ((size_t)*pos < tokens->count) && (tokens->tokens[*pos].type != TK_SEMICOLON))
     {
         if(tokens->tokens[*pos].type == TK_EOF){
             fprintf(stderr, "Expected ';' at the end of assignment statement\n");
@@ -326,7 +338,7 @@ Statement* parse_let_statement(TokenArray* tokens, int *pos){
     }
 
     int begin = *pos;
-    while( (*pos < tokens->count) && (tokens->tokens[*pos].type != TK_SEMICOLON) )
+    while( ((size_t)*pos < tokens->count) && (tokens->tokens[*pos].type != TK_SEMICOLON) )
     {
         if(tokens->tokens[*pos].type == TK_EOF){
             fprintf(stderr, "Expected ';' at the end of 'let' statement\n");
@@ -393,7 +405,7 @@ Statement* parse_if_statement(TokenArray* tokens, int *pos){
 
     statement->data.if_stmt.then_branch = parse_block(tokens, pos);
 
-    if(*pos < tokens->count && tokens->tokens[*pos].type == TK_ELSE){
+    if((size_t)*pos < tokens->count && tokens->tokens[*pos].type == TK_ELSE){
         (*pos)++;
         statement->data.if_stmt.else_branch = parse_block(tokens, pos);
     }
@@ -486,7 +498,7 @@ Statement* parse_block(TokenArray* tokens, int *pos){
     statement->data.block.capacity = tokens->count;
     statement->data.block.statements = malloc(sizeof(Statement*) * tokens->count);
     (*pos)++;// Skip the opening brace
-    while((*pos < tokens->count) && (tokens->tokens[*pos].type != TK_RBRACE)){
+    while(((size_t)*pos < tokens->count) && (tokens->tokens[*pos].type != TK_RBRACE)){
         if(tokens->tokens[*pos].type == TK_IDENT){
             statement->data.block.statements[statement->data.block.count++] = parse_assign_statement(tokens, pos);
         }
@@ -529,7 +541,7 @@ Statement* parse_print_statement(TokenArray* tokens, int *pos){
     Statement* statement = malloc(sizeof(*statement));
     statement->type = STMT_PRINT;
     int start = *pos;
-    while((*pos < tokens->count) && (tokens->tokens[*pos].type != TK_SEMICOLON))
+    while(((size_t)*pos < tokens->count) && (tokens->tokens[*pos].type != TK_SEMICOLON))
     {
         if(tokens->tokens[*pos].type == TK_EOF){
             fprintf(stderr, "Expected ';' at the end of print statement\n");
@@ -569,7 +581,7 @@ Program* parse(TokenArray* tokens){
 
     int pos = 0;
 
-    while(pos < tokens->count){
+    while((size_t)pos < tokens->count){
         if(tokens->tokens[pos].type == TK_WHILE){
             program->statesments[program->count++] = parse_while_statement(tokens, &pos);
         }

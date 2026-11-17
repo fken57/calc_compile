@@ -3,15 +3,19 @@ set -euo pipefail
 
 usage() {
     printf "使い方: %s ファイル.fken\n        %s 'ソースコード'\n        %s -f ファイル\n" "$0" "$0" "$0"
+    printf "生成アセンブリは入力ファイルと同じ場所の .s に保存します。直接入力時は program.s に保存します。\n"
 }
 
+assembly_path=program.s
 if [[ $# == 1 && ($1 == -h || $1 == --help) ]]; then
     usage
     exit 0
 elif [[ $# == 2 && $1 == -f ]]; then
     source_text=$(cat -- "$2")
+    assembly_path="${2%.fken}.s"
 elif [[ $# == 1 && $1 == *.fken ]]; then
     source_text=$(cat -- "$1")
+    assembly_path="${1%.fken}.s"
 elif [[ $# == 1 ]]; then
     source_text=$1
 else
@@ -25,5 +29,7 @@ trap 'rm -rf -- "$work_dir"' EXIT
 
 gcc -std=c11 "$project_dir/calc4.c" -o "$work_dir/compiler"
 "$work_dir/compiler" "$source_text" > "$work_dir/program.s"
+cp -- "$work_dir/program.s" "$assembly_path"
+printf 'アセンブリ: %s\n' "$assembly_path" >&2
 gcc "$work_dir/program.s" -Wl,-z,noexecstack -o "$work_dir/program"
 "$work_dir/program"

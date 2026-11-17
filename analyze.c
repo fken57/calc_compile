@@ -18,7 +18,7 @@ void analyze_expr(Expr *expr,SymbolTable *symbol_table){
     }
     else if(expr->type == EXPR_VARIABLE){
         bool is_var_exist=false;
-        for(int i = 0; i < symbol_table->count; i++){
+        for(size_t i = 0; i < symbol_table->count; i++){
             if(strcmp(symbol_table->symbols[i].name, expr->data.variable.var_name) == 0){
                 is_var_exist = true;
                 expr->data.variable.offset = symbol_table->symbols[i].offset;
@@ -56,12 +56,14 @@ void analyze_while(Statement *stmt,int *offset,SymbolTable *symbol_table){
 }
 
 void analyze_print(Statement *stmt,int *offset,SymbolTable *symbol_table){
+    (void)offset;
     analyze_expr(stmt->data.print.expression,symbol_table);
 }
 
 void analyze_assign(Statement *stmt,int *offset,SymbolTable *symbol_table){
+    (void)offset;
     bool is_var_exist = false;
-    for(int i = 0; i < symbol_table->count; i++){
+    for(size_t i = 0; i < symbol_table->count; i++){
         if(strcmp(symbol_table->symbols[i].name, stmt->data.assign.name) == 0){
             is_var_exist = true;
             stmt->data.assign.offset = symbol_table->symbols[i].offset;
@@ -85,7 +87,7 @@ void analyze_if(Statement *stmt,int *offset,SymbolTable *symbol_table){
 void analyze_block(Statement *stmt,int *offset,SymbolTable *symbol_table){
     size_t saved_count =symbol_table->count;
     // TODO: Implement block statement analysis
-    for(int i = 0; i < stmt->data.block.count; i++){
+    for(size_t i = 0; i < stmt->data.block.count; i++){
         switch(stmt->data.block.statements[i]->type){
             case STMT_LET:
                 analyze_let(stmt->data.block.statements[i], offset, symbol_table);
@@ -105,6 +107,9 @@ void analyze_block(Statement *stmt,int *offset,SymbolTable *symbol_table){
             case STMT_BLOCK:
                 analyze_block(stmt->data.block.statements[i], offset, symbol_table);
                 break;
+            case STMT_EXPR:
+                fprintf(stderr, "Error: expression statement not supported\n");
+                exit(1);
         }
     }
     symbol_table->count = saved_count;
@@ -118,7 +123,7 @@ void analyze(Program *program){
     symbol_table.symbols = malloc(sizeof(Symbol) * symbol_table.capacity);
     symbol_table.count = 0;
 
-    for(int i = 0; i < program->count; i++){
+    for(size_t i = 0; i < program->count; i++){
         if(program->statesments[i]->type == STMT_LET){
             analyze_let(program->statesments[i], &offset,&symbol_table);
         }

@@ -117,6 +117,9 @@ typedef enum {
     TK_RBRACE,
     TK_SEMICOLON,
     TK_COMMA,
+    TK_INPUT,
+    TK_LBRACKET,
+    TK_RBRACKET,
     TK_EOF
 } TokenType;
 
@@ -126,6 +129,7 @@ typedef enum {
     EXPR_VARIABLE,
     EXPR_BINARY,
     EXPR_UNARY,
+    EXPR_INPUT
     //EXPR_CALL
 } ExprType;
 
@@ -143,6 +147,7 @@ struct Expr{
         {
             char *var_name;
             int offset;
+            
         } variable;
     
 
@@ -156,6 +161,10 @@ struct Expr{
             TokenType op;
             Expr *operand;
         } unary;
+
+        struct {
+            TokenType op;
+        } input;
 
     } data;
 };

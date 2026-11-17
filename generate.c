@@ -13,13 +13,17 @@ void end();
 void start(Program *program){
     printf (".data\n"
         "L_fmt:\n"
-        "\t.ascii \"%%d\\n\\0\"\n"
+        "\t.ascii \"%%lld\\n\\0\"\n"
+        ".text\n"
+        ".section .rodata\n"
+        ".Linput_fmt:\n"
+        "\t.asciz \"%%lld\"\n"
         ".text\n"
         ".globl main\n"
         "main:\n"
         "\tpushq %%rbp\n"
         "\tmovq %%rsp, %%rbp\n");
-    printf("\tsubq $%d, %%rsp\n", program->required_size);
+    printf("\tsubq $%d, %%rsp\n", (program->required_size + 15) / 16 * 16);
     printf("\tmovq $0, %%rax\n");
 }
 
@@ -27,12 +31,13 @@ void end(){
     printf(
     "\tmovl $0, %%eax\n"
     "\tleave\n"
-    "\tret\n");
+    "\tret\n"
+    ".section .note.GNU-stack,\"\",@progbits\n");
 
     return;
 }
 
-void generate_binary_operation(ExprType type){
+void generate_binary_operation(TokenType type){
     switch(type) {
         case TK_PLUS:
             printf("\taddq %%rdi, %%rax\n");
@@ -77,20 +82,25 @@ void generate_binary_operation(ExprType type){
             printf("\tsetne %%al\n");
             printf("\tmovzbq %%al, %%rax\n");
             break;
+        default:
+            fprintf(stderr, "Error: unsupported binary operator: %d\n", type);
+            exit(1);
     }
 }
 
-void generate_expr(Expr *expr){
+void generate_expr(Expr *expr,int *depth){
     if(expr->type == EXPR_BINARY) {
-        generate_expr(expr->data.binary.left);
+        generate_expr(expr->data.binary.left, depth);
         printf("pushq %%rax\n");
-        generate_expr(expr->data.binary.right);
+        (*depth)++;
+        generate_expr(expr->data.binary.right, depth);
         printf("movq %%rax, %%rdi\n");
         printf("popq %%rax\n");
+        (*depth)--; 
         generate_binary_operation(expr->data.binary.op);
     }
     if(expr->type == EXPR_UNARY) {
-        generate_expr(expr->data.unary.operand);
+        generate_expr(expr->data.unary.operand, depth);
         printf("negq %%rax\n");
     }
     if(expr->type == EXPR_NUMBER) {
@@ -99,21 +109,48 @@ void generate_expr(Expr *expr){
     if(expr->type == EXPR_VARIABLE) {
         printf("\tmovq %d(%%rbp), %%rax\n", expr->data.variable.offset);
     }
+    if(expr->type == EXPR_INPUT) {
+        bool needs_padding = (*depth%2 != 0);
+        if(needs_padding) {
+            printf("\tsubq $8, %%rsp\n");
+        }
+        printf("\tsubq $16, %%rsp\n");
+        printf("\tleaq .Linput_fmt(%%rip), %%rdi\n");
+        printf("\tmovq %%rsp,%%rsi\n");
+        printf("\txorl %%eax,%%eax\n");
+        printf("\tcall scanf\n");
+        
+        printf("\tcmpl $1 , %%eax\n");
+        printf("\tje 1f\n");
+        printf("\t movl $1,%%edi\n");
+        printf("\tcall exit\n");
+        printf("1:\n");
+        printf("\tmovq (%%rsp), %%rax\n");
+
+        printf("\taddq $16, %%rsp\n");
+
+        if(needs_padding) {
+            printf("\taddq $8, %%rsp\n");
+        }
+    }
 }
 
 void generate_let(Statement *stmt){
-    generate_expr(stmt->data.let.value);
+    int depth=0;
+    generate_expr(stmt->data.let.value, &depth);
     printf("\tmovq %%rax, %d(%%rbp)\n", stmt->data.let.offset);
 }
 
 void generate_assign(Statement *stmt){
-    generate_expr(stmt->data.assign.value);
+    int depth=0;
+    generate_expr(stmt->data.assign.value, &depth);
     printf("\tmovq %%rax, %d(%%rbp)\n", stmt->data.assign.offset);
 }
 
 void generate_if(Statement *stmt,int *id){
     int label=(*id)++;
-    generate_expr(stmt->data.if_stmt.condition);
+    int depth = 0;
+    generate_expr(stmt->data.if_stmt.condition, &depth);
     printf("\tcmpq $0, %%rax\n");
     printf("\tje else_%d\n", label);
     generate_block(stmt->data.if_stmt.then_branch, id);
@@ -127,8 +164,9 @@ void generate_if(Statement *stmt,int *id){
 
 void generate_while(Statement *stmt,int *id){
     int label=(*id)++;
+    int depth=0;
     printf("while_%d:\n", label);
-    generate_expr(stmt->data.while_stmt.condition);
+    generate_expr(stmt->data.while_stmt.condition, &depth);
     printf("\tcmpq $0, %%rax\n");
     printf("\tje end_%d\n", label);
     generate_block(stmt->data.while_stmt.body, id);
@@ -137,7 +175,7 @@ void generate_while(Statement *stmt,int *id){
 }
 
 void generate_block(Statement *stmt,int *id){
-    for(int i = 0; i < stmt->data.block.count; i++) {
+    for(size_t i = 0; i < stmt->data.block.count; i++) {
         if(stmt->data.block.statements[i] == NULL) {
             continue;
         }
@@ -163,7 +201,8 @@ void generate_block(Statement *stmt,int *id){
 }
 
 void generate_print(Statement *stmt){
-    generate_expr(stmt->data.print.expression);
+    int depth=0;
+    generate_expr(stmt->data.print.expression, &depth);
     printf("\tleaq L_fmt(%%rip), %%rdi\n"
     "\tmovq %%rax, %%rsi\n"
     "\tmovq $0 , %%rax\n"
@@ -173,7 +212,7 @@ void generate_print(Statement *stmt){
 void generate(Program *program){
     start(program);
     int id = 0;
-    for(int i = 0; i < program->count; i++) {
+    for(size_t i = 0; i < program->count; i++) {
         if(program->statesments[i] == NULL) {
             continue;
         }
